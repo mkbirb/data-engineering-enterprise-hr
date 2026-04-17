@@ -1,0 +1,94 @@
+{
+	"name": "pl_employee_engagement_survey_bronze_to_silver",
+	"properties": {
+		"activities": [
+			{
+				"name": "Employee Engagement Bronze Notebook",
+				"type": "DatabricksNotebook",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.00:10:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": "/Users/matthew.kristanto@exposedata.com.au/superhero_enterprise_hr/bronze/bronze_injest",
+					"baseParameters": {
+						"process_date": {
+							"value": "@formatDateTime(pipeline().TriggerTime, 'yyyy-MM-dd')",
+							"type": "Expression"
+						},
+						"csv_file": "employee_engagement_survey"
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "LS_DB_RawEnterpriseHRFiles",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Employee Engagement Silver Cleaned Notebook",
+				"type": "DatabricksNotebook",
+				"dependsOn": [
+					{
+						"activity": "Employee Engagement Bronze Notebook",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.00:10:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": "/Users/matthew.kristanto@exposedata.com.au/superhero_enterprise_hr/silver/HR/silver_employee_engagement_cleaned"
+				},
+				"linkedServiceName": {
+					"referenceName": "LS_DB_RawEnterpriseHRFiles",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Employee Engagement Silver Transformed Notebook_copy1",
+				"type": "DatabricksNotebook",
+				"dependsOn": [
+					{
+						"activity": "Employee Engagement Silver Cleaned Notebook",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.00:10:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": "/Users/matthew.kristanto@exposedata.com.au/superhero_enterprise_hr/silver/HR/silver_employee_engagement_transformed"
+				},
+				"linkedServiceName": {
+					"referenceName": "LS_DB_RawEnterpriseHRFiles",
+					"type": "LinkedServiceReference"
+				}
+			}
+		],
+		"folder": {
+			"name": "Bronze_To_Silver"
+		},
+		"annotations": [],
+		"lastPublishTime": "2026-03-27T01:32:50Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

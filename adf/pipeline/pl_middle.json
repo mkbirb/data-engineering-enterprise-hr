@@ -1,0 +1,186 @@
+{
+	"name": "pl_middle",
+	"properties": {
+		"activities": [
+			{
+				"name": "Get_Source_Folder",
+				"type": "GetMetadata",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataset": {
+						"referenceName": "ds_landing_file",
+						"type": "DatasetReference",
+						"parameters": {
+							"ds_source_dir": {
+								"value": "@pipeline().parameters.p_root_folder",
+								"type": "Expression"
+							},
+							"ds_source_file": {
+								"value": "@string('')",
+								"type": "Expression"
+							}
+						}
+					},
+					"fieldList": [
+						"childItems"
+					],
+					"storeSettings": {
+						"type": "AzureBlobFSReadSettings",
+						"recursive": true,
+						"enablePartitionDiscovery": false
+					},
+					"formatSettings": {
+						"type": "DelimitedTextReadSettings"
+					}
+				}
+			},
+			{
+				"name": "For Each File in Source Folder",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Get_Source_Folder",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Get_Source_Folder').output.childItems",
+						"type": "Expression"
+					},
+					"isSequential": true,
+					"activities": [
+						{
+							"name": "Check If File CSV",
+							"type": "IfCondition",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"expression": {
+									"value": "@and(\n  equals(item().type, 'File'),\n  endsWith(item().name, '.csv')\n)",
+									"type": "Expression"
+								},
+								"ifFalseActivities": [
+									{
+										"name": "Execute Middle Inner Folder",
+										"type": "ExecutePipeline",
+										"dependsOn": [],
+										"policy": {
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"pipeline": {
+												"referenceName": "pl_middle_inner_folder",
+												"type": "PipelineReference"
+											},
+											"waitOnCompletion": true,
+											"parameters": {
+												"p_inner_folder": {
+													"value": "@item().name",
+													"type": "Expression"
+												},
+												"p_year": {
+													"value": "@pipeline().parameters.p_year",
+													"type": "Expression"
+												},
+												"p_month": {
+													"value": "@pipeline().parameters.p_month",
+													"type": "Expression"
+												},
+												"p_date": {
+													"value": "@pipeline().parameters.p_date",
+													"type": "Expression"
+												},
+												"p_item": {
+													"value": "@item()",
+													"type": "Expression"
+												}
+											}
+										}
+									}
+								],
+								"ifTrueActivities": [
+									{
+										"name": "Execute Middle Files",
+										"type": "ExecutePipeline",
+										"dependsOn": [],
+										"policy": {
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"pipeline": {
+												"referenceName": "pl_middle_files",
+												"type": "PipelineReference"
+											},
+											"waitOnCompletion": true,
+											"parameters": {
+												"p_item": {
+													"value": "@item()",
+													"type": "Expression"
+												},
+												"p_year": {
+													"value": "@pipeline().parameters.p_year",
+													"type": "Expression"
+												},
+												"p_month": {
+													"value": "@pipeline().parameters.p_month",
+													"type": "Expression"
+												},
+												"p_date": {
+													"value": "@pipeline().parameters.p_date",
+													"type": "Expression"
+												},
+												"p_root_folder": {
+													"value": "@pipeline().parameters.p_root_folder",
+													"type": "Expression"
+												}
+											}
+										}
+									}
+								]
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"p_root_folder": {
+				"type": "string"
+			},
+			"p_year": {
+				"type": "string"
+			},
+			"p_month": {
+				"type": "string"
+			},
+			"p_date": {
+				"type": "string"
+			}
+		},
+		"variables": {
+			"v_source_file_path": {
+				"type": "String"
+			},
+			"v_target_file_path": {
+				"type": "String"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2026-04-13T02:19:28Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

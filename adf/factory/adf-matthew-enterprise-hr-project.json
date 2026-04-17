@@ -1,0 +1,9 @@
+{
+	"name": "adf-matthew-enterprise-hr-project",
+	"location": "australiaeast",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "57b1460c-bb17-4479-b5c6-f2b6387c9dc9",
+		"tenantId": "828ac48e-05ab-4d94-abaf-3ccae6f84aac"
+	}
+}

@@ -1,0 +1,75 @@
+{
+	"name": "pl_middle_inner_folder",
+	"properties": {
+		"activities": [
+			{
+				"name": "Folder Type Check",
+				"type": "IfCondition",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(pipeline().parameters.p_item.type, 'Folder')",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "Execute Middle Recursive Items",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"policy": {
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "pl_middle_recursive_items",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"p_folder_path": {
+										"value": "@pipeline().parameters.p_inner_folder",
+										"type": "Expression"
+									},
+									"p_year": {
+										"value": "@pipeline().parameters.p_year",
+										"type": "Expression"
+									},
+									"p_month": {
+										"value": "@pipeline().parameters.p_month",
+										"type": "Expression"
+									},
+									"p_date": {
+										"value": "@pipeline().parameters.p_date",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"p_inner_folder": {
+				"type": "string"
+			},
+			"p_year": {
+				"type": "string"
+			},
+			"p_month": {
+				"type": "string"
+			},
+			"p_date": {
+				"type": "string"
+			},
+			"p_item": {
+				"type": "object"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2026-04-13T00:40:00Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

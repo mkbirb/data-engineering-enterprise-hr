@@ -1,0 +1,51 @@
+{
+	"name": "ds_target",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "LS_ADLS_RawEnterpriseHRFiles",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"ds_sink_dir": {
+				"type": "string"
+			},
+			"ds_sink_file": {
+				"type": "string"
+			},
+			"ds_year": {
+				"type": "string"
+			},
+			"ds_month": {
+				"type": "string"
+			},
+			"ds_date": {
+				"type": "string"
+			},
+			"ds_folder_name": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileName": {
+					"value": "@dataset().ds_sink_file",
+					"type": "Expression"
+				},
+				"folderPath": {
+					"value": "@concat(dataset().ds_year, '/',  dataset().ds_month, '/',  dataset().ds_date, '/', replace(dataset().ds_folder_name, '.csv', ''))",
+					"type": "Expression"
+				},
+				"fileSystem": "bronze"
+			},
+			"columnDelimiter": ",",
+			"escapeChar": "\\",
+			"firstRowAsHeader": true,
+			"quoteChar": "\""
+		},
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

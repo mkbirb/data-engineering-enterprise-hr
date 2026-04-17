@@ -1,0 +1,116 @@
+{
+	"name": "pl_bottom",
+	"properties": {
+		"activities": [
+			{
+				"name": "Copy Data to Bronze",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "DelimitedTextSource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true,
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "DelimitedTextReadSettings"
+						}
+					},
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings",
+							"copyBehavior": "PreserveHierarchy"
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": true,
+							"fileExtension": ".txt"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "ds_landing_file",
+						"type": "DatasetReference",
+						"parameters": {
+							"ds_source_dir": {
+								"value": "@pipeline().parameters.p_root_folder",
+								"type": "Expression"
+							},
+							"ds_source_file": {
+								"value": "@pipeline().parameters.p_source_file",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "ds_target",
+						"type": "DatasetReference",
+						"parameters": {
+							"ds_sink_dir": {
+								"value": "@concat(\n  pipeline().parameters.p_year,\n  '/',\n  pipeline().parameters.p_month,\n  '/',\n  pipeline().parameters.p_date,\n  '/'\n)",
+								"type": "Expression"
+							},
+							"ds_sink_file": "@pipeline().parameters.p_source_file",
+							"ds_year": "@pipeline().parameters.p_year",
+							"ds_month": {
+								"value": "@pipeline().parameters.p_month",
+								"type": "Expression"
+							},
+							"ds_date": {
+								"value": "@pipeline().parameters.p_date",
+								"type": "Expression"
+							},
+							"ds_folder_name": {
+								"value": "@pipeline().parameters.p_source_file",
+								"type": "Expression"
+							}
+						}
+					}
+				]
+			}
+		],
+		"parameters": {
+			"p_source_file": {
+				"type": "string"
+			},
+			"p_year": {
+				"type": "string"
+			},
+			"p_month": {
+				"type": "string"
+			},
+			"p_date": {
+				"type": "string"
+			},
+			"p_root_folder": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2026-04-13T02:19:28Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

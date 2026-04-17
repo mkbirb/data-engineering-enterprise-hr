@@ -1,0 +1,31 @@
+{
+	"name": "ds_training_and_development_bronze",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "LS_ADLS_RawEnterpriseHRFiles",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "Bronze"
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileName": "training_and_development.csv",
+				"folderPath": {
+					"value": "@concat('training_and_development/', formatDateTime(utcnow(), 'yyyy-MM-dd'))",
+					"type": "Expression"
+				},
+				"fileSystem": "bronze"
+			},
+			"columnDelimiter": ",",
+			"escapeChar": "\\",
+			"firstRowAsHeader": true,
+			"quoteChar": "\""
+		},
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

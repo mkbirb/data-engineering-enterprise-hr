@@ -1,0 +1,163 @@
+{
+	"name": "pl_top",
+	"properties": {
+		"activities": [
+			{
+				"name": "Middle Pipeline_copy1",
+				"type": "ExecutePipeline",
+				"dependsOn": [],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pl_middle",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"p_year": {
+							"value": "@pipeline().parameters.p_year",
+							"type": "Expression"
+						},
+						"p_month": {
+							"value": "@pipeline().parameters.p_month",
+							"type": "Expression"
+						},
+						"p_date": {
+							"value": "@pipeline().parameters.p_date",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "Set Ingestion Complete",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Middle Pipeline_copy1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "v_ingestion_complete",
+					"value": true
+				}
+			},
+			{
+				"name": "Employee Survey Fact Databricks Pipeline",
+				"type": "DatabricksJob",
+				"dependsOn": [
+					{
+						"activity": "Set Ingestion Complete",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"jobId": "1026104986079593",
+					"jobParameters": {
+						"process_date_year": {
+							"value": "@pipeline().parameters.p_year",
+							"type": "Expression"
+						},
+						"process_date_month": {
+							"value": "@pipeline().parameters.p_month",
+							"type": "Expression"
+						},
+						"process_date_date": {
+							"value": "@pipeline().parameters.p_date",
+							"type": "Expression"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "LS_DB_RawEnterpriseHRFiles",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Job Application Fact Pipeline",
+				"type": "DatabricksJob",
+				"dependsOn": [
+					{
+						"activity": "Set Ingestion Complete",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"jobId": "503606042801551",
+					"jobParameters": {
+						"process_date_year": {
+							"value": "@pipeline().parameters.p_year",
+							"type": "Expression"
+						},
+						"process_date_month": {
+							"value": "@pipeline().parameters.p_month",
+							"type": "Expression"
+						},
+						"process_date_date": {
+							"value": "@pipeline().parameters.p_date",
+							"type": "Expression"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "LS_DB_RawEnterpriseHRFiles",
+					"type": "LinkedServiceReference"
+				}
+			}
+		],
+		"parameters": {
+			"p_year": {
+				"type": "string"
+			},
+			"p_month": {
+				"type": "string"
+			},
+			"p_date": {
+				"type": "string"
+			},
+			"p_root_folder": {
+				"type": "string"
+			}
+		},
+		"variables": {
+			"v_ingestion_complete": {
+				"type": "Boolean",
+				"defaultValue": false
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2026-04-13T02:19:28Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

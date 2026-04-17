@@ -1,0 +1,137 @@
+{
+	"name": "pl_employee_engagement_survey_injest_to_Bronze",
+	"properties": {
+		"activities": [
+			{
+				"name": "Copy Employee Engagement Survey to Bronze",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.00:10:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "DelimitedTextSource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true,
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "DelimitedTextReadSettings"
+						}
+					},
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings",
+							"copyBehavior": {
+								"value": "@{formatDateTime(utcNow(), 'yyyy-MM-dd')}",
+								"type": "Expression"
+							}
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": true,
+							"fileExtension": ".txt"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "Employee ID",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "Employee ID",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "Survey Date",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "Survey Date",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "Engagement Score",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "Engagement Score",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "Satisfaction Score",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "Satisfaction Score",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "Work-Life Balance Score",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "Work-Life Balance Score",
+									"type": "String",
+									"physicalType": "String"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "ds_employee_engagement_survey_source",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "ds_employee_engagement_survey_bronze",
+						"type": "DatasetReference"
+					}
+				]
+			}
+		],
+		"folder": {
+			"name": "Injest_To_Bronze"
+		},
+		"annotations": [],
+		"lastPublishTime": "2026-03-27T01:32:50Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

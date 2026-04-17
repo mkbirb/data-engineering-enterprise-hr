@@ -1,0 +1,160 @@
+{
+	"name": "pl_recruitment_data_bronze_to_silver",
+	"properties": {
+		"activities": [
+			{
+				"name": "Recruitment Data Bronze to Silver Notebook",
+				"type": "DatabricksNotebook",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.00:10:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": "/Users/matthew.kristanto@exposedata.com.au/superhero_enterprise_hr/bronze/bronze_injest",
+					"baseParameters": {
+						"process_date": {
+							"value": "@formatDateTime(pipeline().TriggerTime, 'yyyy-MM-dd')",
+							"type": "Expression"
+						},
+						"csv_file": "recruitment_data"
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "LS_DB_RawEnterpriseHRFiles",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Recruitment Data Silver Cleaned Notebook",
+				"type": "DatabricksNotebook",
+				"dependsOn": [
+					{
+						"activity": "Recruitment Data Bronze to Silver Notebook",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.00:10:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": "/Users/matthew.kristanto@exposedata.com.au/superhero_enterprise_hr/silver/HR/silver_recruitment_data_cleaned",
+					"baseParameters": {
+						"process_date": {
+							"value": "@formatDateTime(pipeline().TriggerTime, 'yyyy-MM-dd')",
+							"type": "Expression"
+						},
+						"csv_file": "recruitment_data"
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "LS_DB_RawEnterpriseHRFiles",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Recruitment Data Silver Transformed Notebook",
+				"type": "DatabricksNotebook",
+				"dependsOn": [
+					{
+						"activity": "Recruitment Data Silver Cleaned Notebook",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.00:10:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": "/Users/matthew.kristanto@exposedata.com.au/superhero_enterprise_hr/silver/HR/silver_recruitment_data_transformed",
+					"baseParameters": {
+						"process_date": {
+							"value": "@formatDateTime(pipeline().TriggerTime, 'yyyy-MM-dd')",
+							"type": "Expression"
+						},
+						"csv_file": "recruitment_data"
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "LS_DB_RawEnterpriseHRFiles",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Capitalize Names",
+				"type": "DatabricksNotebook",
+				"dependsOn": [
+					{
+						"activity": "Data Cleaned Checker",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": "/Users/matthew.kristanto@exposedata.com.au/superhero_enterprise_hr/helpers/helper_capital_word_convertor",
+					"baseParameters": {
+						"invalid_records": {
+							"value": "@string(json(activity('Recruitment Data Silver Cleaned Notebook').error.message).invalid_first_name_records)",
+							"type": "Expression"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "LS_DB_RawEnterpriseHRFiles",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Data Cleaned Checker",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Recruitment Data Silver Cleaned Notebook",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(\n    json(activity('Recruitment Data Silver Cleaned Notebook').error.message).error_type,\n    'FIRST_NAME_VALIDATION_FAILED'\n)\n",
+						"type": "Expression"
+					}
+				}
+			}
+		],
+		"folder": {
+			"name": "Bronze_To_Silver"
+		},
+		"annotations": [],
+		"lastPublishTime": "2026-03-30T05:49:55Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

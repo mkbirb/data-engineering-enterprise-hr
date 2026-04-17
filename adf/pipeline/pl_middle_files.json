@@ -1,0 +1,65 @@
+{
+	"name": "pl_middle_files",
+	"properties": {
+		"activities": [
+			{
+				"name": "Execute Bottom Pipeline",
+				"type": "ExecutePipeline",
+				"dependsOn": [],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pl_bottom",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"p_source_file": {
+							"value": "@pipeline().parameters.p_item.name",
+							"type": "Expression"
+						},
+						"p_year": {
+							"value": "@pipeline().parameters.p_year",
+							"type": "Expression"
+						},
+						"p_month": {
+							"value": "@pipeline().parameters.p_month",
+							"type": "Expression"
+						},
+						"p_date": {
+							"value": "@pipeline().parameters.p_date",
+							"type": "Expression"
+						},
+						"p_root_folder": {
+							"value": "@pipeline().parameters.p_root_folder",
+							"type": "Expression"
+						}
+					}
+				}
+			}
+		],
+		"parameters": {
+			"p_item": {
+				"type": "object"
+			},
+			"p_year": {
+				"type": "string"
+			},
+			"p_month": {
+				"type": "string"
+			},
+			"p_date": {
+				"type": "string"
+			},
+			"p_root_folder": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2026-04-10T01:48:11Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

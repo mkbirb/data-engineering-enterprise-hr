@@ -1,0 +1,31 @@
+{
+	"name": "ds_employee_engagement_survey_bronze",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "LS_ADLS_RawEnterpriseHRFiles",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "Bronze"
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileName": "employee_engagement_survey.csv",
+				"folderPath": {
+					"value": "@concat('employee_engagement/', formatDateTime(utcnow(), 'yyyy-MM-dd'))",
+					"type": "Expression"
+				},
+				"fileSystem": "bronze"
+			},
+			"columnDelimiter": ",",
+			"escapeChar": "\\",
+			"firstRowAsHeader": true,
+			"quoteChar": "\""
+		},
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

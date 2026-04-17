@@ -1,0 +1,161 @@
+{
+	"name": "pl_employee_timesheet_injest_to_bronze",
+	"properties": {
+		"activities": [
+			{
+				"name": "Copy Employee Timesheet to Bronze",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.00:10:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "DelimitedTextSource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true,
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "DelimitedTextReadSettings"
+						}
+					},
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings",
+							"copyBehavior": {
+								"value": "@{formatDateTime(utcNow(), 'yyyy-MM-dd')}",
+								"type": "Expression"
+							}
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": true,
+							"fileExtension": ".txt"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "employee_id",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "employee_id",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "first_name",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "first_name",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "last_name",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "last_name",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "department",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "department",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "hours_worked",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "hours_worked",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "project_code",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "project_code",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "work_date",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "work_date",
+									"type": "String",
+									"physicalType": "String"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "ds_employee_timesheet_source",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "ds_employee_timesheet_bronze",
+						"type": "DatasetReference"
+					}
+				]
+			}
+		],
+		"folder": {
+			"name": "Injest_To_Bronze"
+		},
+		"annotations": [],
+		"lastPublishTime": "2026-03-26T05:53:03Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

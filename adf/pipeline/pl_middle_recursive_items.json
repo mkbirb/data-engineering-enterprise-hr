@@ -1,0 +1,143 @@
+{
+	"name": "pl_middle_recursive_items",
+	"properties": {
+		"activities": [
+			{
+				"name": "For Each CSV File",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Filter For CSV Files",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Filter For CSV Files').output.value",
+						"type": "Expression"
+					},
+					"isSequential": true,
+					"activities": [
+						{
+							"name": "Execute Middle FIles",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"policy": {
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "pl_middle_files",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"p_item": {
+										"value": "@item()",
+										"type": "Expression"
+									},
+									"p_year": {
+										"value": "@pipeline().parameters.p_year",
+										"type": "Expression"
+									},
+									"p_month": {
+										"value": "@pipeline().parameters.p_month",
+										"type": "Expression"
+									},
+									"p_date": {
+										"value": "@pipeline().parameters.p_date",
+										"type": "Expression"
+									},
+									"p_root_folder": {
+										"value": "@pipeline().parameters.p_folder_path",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Get Recursive Items",
+				"type": "GetMetadata",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataset": {
+						"referenceName": "ds_landing_folder",
+						"type": "DatasetReference",
+						"parameters": {
+							"folderPath": {
+								"value": "@pipeline().parameters.p_folder_path",
+								"type": "Expression"
+							}
+						}
+					},
+					"fieldList": [
+						"childItems"
+					],
+					"storeSettings": {
+						"type": "AzureBlobFSReadSettings",
+						"recursive": true,
+						"enablePartitionDiscovery": false
+					},
+					"formatSettings": {
+						"type": "DelimitedTextReadSettings"
+					}
+				}
+			},
+			{
+				"name": "Filter For CSV Files",
+				"type": "Filter",
+				"dependsOn": [
+					{
+						"activity": "Get Recursive Items",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Get Recursive Items').output.childItems",
+						"type": "Expression"
+					},
+					"condition": {
+						"value": "@and(   equals(item().type, 'File'),   endsWith(item().name, '.csv') )",
+						"type": "Expression"
+					}
+				}
+			}
+		],
+		"parameters": {
+			"p_folder_path": {
+				"type": "string"
+			},
+			"p_year": {
+				"type": "string"
+			},
+			"p_month": {
+				"type": "string"
+			},
+			"p_date": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2026-04-13T02:19:28Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}
