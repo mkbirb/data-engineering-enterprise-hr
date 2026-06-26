@@ -1,6 +1,8 @@
-<img width="416" height="139" alt="image" src="https://github.com/user-attachments/assets/e1298381-a871-4e55-b96c-5772d9cc02e2" /># Data Engineering Enterprise HR
-
+# Data Engineering Enterprise HR
 Data Engineering Enterprise HR uses the Databricks Platform and the Medallion Architecture to ingest data, clean the data ensuring that there is no invalid values and provide clean data to serve business reports. It includes Databricks Job Pipelines that run the data workflows bringing them along the Bronze, Silver and Gold Workbooks, after recieving data stored in Microsoft Azure.
+
+<img width="794" height="236" alt="image" src="https://github.com/user-attachments/assets/55199f63-92b9-4fd6-90a9-c182dbd1a313" />
+
 
 ## 🏗️ Built Using
 **Template:** Databricks <br>
