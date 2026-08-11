@@ -1,0 +1,2995 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "adf-matthew-enterprise-hr-project"
+		},
+		"LS_ADLS_RawEnterpriseHRFiles_accountKey": {
+			"type": "secureString",
+			"metadata": "Secure string for 'accountKey' of 'LS_ADLS_RawEnterpriseHRFiles'"
+		},
+		"LS_DB_RawEnterpriseHRFiles_accessToken": {
+			"type": "secureString",
+			"metadata": "Secure string for 'accessToken' of 'LS_DB_RawEnterpriseHRFiles'"
+		},
+		"LS_ADLS_RawEnterpriseHRFiles_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://dlmkenterprisehrstorage.dfs.core.windows.net/"
+		},
+		"LS_DB_RawEnterpriseHRFiles_properties_typeProperties_existingClusterId": {
+			"type": "string",
+			"defaultValue": "0320-025736-qgd67nh4"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/pl_bottom')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Copy Data to Bronze",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "DelimitedTextSource",
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSettings"
+								}
+							},
+							"sink": {
+								"type": "DelimitedTextSink",
+								"storeSettings": {
+									"type": "AzureBlobFSWriteSettings",
+									"copyBehavior": "PreserveHierarchy"
+								},
+								"formatSettings": {
+									"type": "DelimitedTextWriteSettings",
+									"quoteAllText": true,
+									"fileExtension": ".txt"
+								}
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "ds_landing_file",
+								"type": "DatasetReference",
+								"parameters": {
+									"ds_source_dir": {
+										"value": "@pipeline().parameters.p_root_folder",
+										"type": "Expression"
+									},
+									"ds_source_file": {
+										"value": "@pipeline().parameters.p_source_file",
+										"type": "Expression"
+									}
+								}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "ds_target",
+								"type": "DatasetReference",
+								"parameters": {
+									"ds_sink_dir": {
+										"value": "@concat(\n  pipeline().parameters.p_year,\n  '/',\n  pipeline().parameters.p_month,\n  '/',\n  pipeline().parameters.p_date,\n  '/'\n)",
+										"type": "Expression"
+									},
+									"ds_sink_file": "@pipeline().parameters.p_source_file",
+									"ds_year": "@pipeline().parameters.p_year",
+									"ds_month": {
+										"value": "@pipeline().parameters.p_month",
+										"type": "Expression"
+									},
+									"ds_date": {
+										"value": "@pipeline().parameters.p_date",
+										"type": "Expression"
+									},
+									"ds_folder_name": {
+										"value": "@pipeline().parameters.p_source_file",
+										"type": "Expression"
+									}
+								}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"p_source_file": {
+						"type": "string"
+					},
+					"p_year": {
+						"type": "string"
+					},
+					"p_month": {
+						"type": "string"
+					},
+					"p_date": {
+						"type": "string"
+					},
+					"p_root_folder": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"lastPublishTime": "2026-04-13T02:19:28Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/ds_landing_file')]",
+				"[concat(variables('factoryId'), '/datasets/ds_target')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/pl_employee_engagement_survey_bronze_to_silver')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Employee Engagement Bronze Notebook",
+						"type": "DatabricksNotebook",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.00:10:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Users/matthew.kristanto@exposedata.com.au/superhero_enterprise_hr/bronze/bronze_injest",
+							"baseParameters": {
+								"process_date": {
+									"value": "@formatDateTime(pipeline().TriggerTime, 'yyyy-MM-dd')",
+									"type": "Expression"
+								},
+								"csv_file": "employee_engagement_survey"
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "LS_DB_RawEnterpriseHRFiles",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Employee Engagement Silver Cleaned Notebook",
+						"type": "DatabricksNotebook",
+						"dependsOn": [
+							{
+								"activity": "Employee Engagement Bronze Notebook",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.00:10:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Users/matthew.kristanto@exposedata.com.au/superhero_enterprise_hr/silver/HR/silver_employee_engagement_cleaned"
+						},
+						"linkedServiceName": {
+							"referenceName": "LS_DB_RawEnterpriseHRFiles",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Employee Engagement Silver Transformed Notebook_copy1",
+						"type": "DatabricksNotebook",
+						"dependsOn": [
+							{
+								"activity": "Employee Engagement Silver Cleaned Notebook",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.00:10:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Users/matthew.kristanto@exposedata.com.au/superhero_enterprise_hr/silver/HR/silver_employee_engagement_transformed"
+						},
+						"linkedServiceName": {
+							"referenceName": "LS_DB_RawEnterpriseHRFiles",
+							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"folder": {
+					"name": "Bronze_To_Silver"
+				},
+				"annotations": [],
+				"lastPublishTime": "2026-03-27T01:32:50Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_DB_RawEnterpriseHRFiles')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/pl_employee_engagement_survey_injest_to_Bronze')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Copy Employee Engagement Survey to Bronze",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.00:10:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "DelimitedTextSource",
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSettings"
+								}
+							},
+							"sink": {
+								"type": "DelimitedTextSink",
+								"storeSettings": {
+									"type": "AzureBlobFSWriteSettings",
+									"copyBehavior": {
+										"value": "@{formatDateTime(utcNow(), 'yyyy-MM-dd')}",
+										"type": "Expression"
+									}
+								},
+								"formatSettings": {
+									"type": "DelimitedTextWriteSettings",
+									"quoteAllText": true,
+									"fileExtension": ".txt"
+								}
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "Employee ID",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "Employee ID",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "Survey Date",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "Survey Date",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "Engagement Score",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "Engagement Score",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "Satisfaction Score",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "Satisfaction Score",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "Work-Life Balance Score",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "Work-Life Balance Score",
+											"type": "String",
+											"physicalType": "String"
+										}
+									}
+								],
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "ds_employee_engagement_survey_source",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "ds_employee_engagement_survey_bronze",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"folder": {
+					"name": "Injest_To_Bronze"
+				},
+				"annotations": [],
+				"lastPublishTime": "2026-03-27T01:32:50Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/ds_employee_engagement_survey_source')]",
+				"[concat(variables('factoryId'), '/datasets/ds_employee_engagement_survey_bronze')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/pl_employee_payroll_bronze_to_silver_copy1')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Employee Payroll Bronze Notebook",
+						"type": "DatabricksNotebook",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.00:10:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Users/matthew.kristanto@exposedata.com.au/superhero_enterprise_hr/bronze/bronze_injest",
+							"baseParameters": {
+								"process_date": {
+									"value": "@formatDateTime(pipeline().TriggerTime, 'yyyy-MM-dd')",
+									"type": "Expression"
+								},
+								"csv_file": "employee_payroll"
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "LS_DB_RawEnterpriseHRFiles",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Employee Payroll Silver Cleaned Notebook",
+						"type": "DatabricksNotebook",
+						"dependsOn": [
+							{
+								"activity": "Employee Payroll Bronze Notebook",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.00:10:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Users/matthew.kristanto@exposedata.com.au/superhero_enterprise_hr/silver/Finance/silver_employee_payroll_cleaned"
+						},
+						"linkedServiceName": {
+							"referenceName": "LS_DB_RawEnterpriseHRFiles",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Employee Payroll Silver Transformed Notebook",
+						"type": "DatabricksNotebook",
+						"dependsOn": [
+							{
+								"activity": "Employee Payroll Silver Cleaned Notebook",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.00:10:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Users/matthew.kristanto@exposedata.com.au/superhero_enterprise_hr/silver/Finance/silver_employee_payroll_transformed"
+						},
+						"linkedServiceName": {
+							"referenceName": "LS_DB_RawEnterpriseHRFiles",
+							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"folder": {
+					"name": "Bronze_To_Silver"
+				},
+				"annotations": [],
+				"lastPublishTime": "2026-03-27T01:32:50Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_DB_RawEnterpriseHRFiles')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/pl_employee_payroll_injest_to_bronze')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Copy Employee Payroll to Bronze",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.00:10:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "DelimitedTextSource",
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSettings"
+								}
+							},
+							"sink": {
+								"type": "DelimitedTextSink",
+								"storeSettings": {
+									"type": "AzureBlobFSWriteSettings",
+									"copyBehavior": {
+										"value": "@{formatDateTime(utcNow(), 'yyyy-MM-dd')}",
+										"type": "Expression"
+									}
+								},
+								"formatSettings": {
+									"type": "DelimitedTextWriteSettings",
+									"quoteAllText": true,
+									"fileExtension": ".txt"
+								}
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "employee_id",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "employee_id",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "first_name",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "first_name",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "last_name",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "last_name",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "hire_date",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "hire_date",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "department",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "department",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "salary",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "salary",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "employment_status",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "employment_status",
+											"type": "String",
+											"physicalType": "String"
+										}
+									}
+								],
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "ds_employee_payroll_source",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "ds_employee_payroll_bronze",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"folder": {
+					"name": "Injest_To_Bronze"
+				},
+				"annotations": [],
+				"lastPublishTime": "2026-03-26T05:53:03Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/ds_employee_payroll_source')]",
+				"[concat(variables('factoryId'), '/datasets/ds_employee_payroll_bronze')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/pl_employee_timesheet_bronze_to_silver')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Employee Timesheet Bronze Notebook",
+						"type": "DatabricksNotebook",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.00:10:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Users/matthew.kristanto@exposedata.com.au/superhero_enterprise_hr/bronze/bronze_injest",
+							"baseParameters": {
+								"process_date": {
+									"value": "@formatDateTime(pipeline().TriggerTime, 'yyyy-MM-dd')",
+									"type": "Expression"
+								},
+								"csv_file": "employee_timesheet"
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "LS_DB_RawEnterpriseHRFiles",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Employee Timesheet Silver Cleaned Notebook",
+						"type": "DatabricksNotebook",
+						"dependsOn": [
+							{
+								"activity": "Employee Timesheet Bronze Notebook",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.00:10:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Users/matthew.kristanto@exposedata.com.au/superhero_enterprise_hr/silver/Finance/silver_employee_timesheet_cleaned"
+						},
+						"linkedServiceName": {
+							"referenceName": "LS_DB_RawEnterpriseHRFiles",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Capitalize Names",
+						"type": "DatabricksNotebook",
+						"dependsOn": [
+							{
+								"activity": "Data Cleaned Checker",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Users/matthew.kristanto@exposedata.com.au/superhero_enterprise_hr/helpers/helper_capital_word_convertor",
+							"baseParameters": {
+								"invalid_records": {
+									"value": "@string(json(activity('Employee Timesheet Silver Cleaned Notebook').error.message).invalid_first_name_records)",
+									"type": "Expression"
+								}
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "LS_DB_RawEnterpriseHRFiles",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Data Cleaned Checker",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "Employee Timesheet Silver Cleaned Notebook",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@equals(\n    json(activity('Employee Timesheet Silver Cleaned Notebook').error.message).error_type,\n    'FIRST_NAME_VALIDATION_FAILED'\n)\n",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Employee Timesheet Silver Transformed Notebook_copy1",
+						"type": "DatabricksNotebook",
+						"dependsOn": [
+							{
+								"activity": "Employee Timesheet Silver Cleaned Notebook",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.00:10:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Users/matthew.kristanto@exposedata.com.au/superhero_enterprise_hr/silver/Finance/silver_employee_timesheet_transformed"
+						},
+						"linkedServiceName": {
+							"referenceName": "LS_DB_RawEnterpriseHRFiles",
+							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"folder": {
+					"name": "Bronze_To_Silver"
+				},
+				"annotations": [],
+				"lastPublishTime": "2026-03-30T05:25:34Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_DB_RawEnterpriseHRFiles')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/pl_employee_timesheet_injest_to_bronze')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Copy Employee Timesheet to Bronze",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.00:10:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "DelimitedTextSource",
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSettings"
+								}
+							},
+							"sink": {
+								"type": "DelimitedTextSink",
+								"storeSettings": {
+									"type": "AzureBlobFSWriteSettings",
+									"copyBehavior": {
+										"value": "@{formatDateTime(utcNow(), 'yyyy-MM-dd')}",
+										"type": "Expression"
+									}
+								},
+								"formatSettings": {
+									"type": "DelimitedTextWriteSettings",
+									"quoteAllText": true,
+									"fileExtension": ".txt"
+								}
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "employee_id",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "employee_id",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "first_name",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "first_name",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "last_name",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "last_name",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "department",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "department",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "hours_worked",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "hours_worked",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "project_code",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "project_code",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "work_date",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "work_date",
+											"type": "String",
+											"physicalType": "String"
+										}
+									}
+								],
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "ds_employee_timesheet_source",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "ds_employee_timesheet_bronze",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"folder": {
+					"name": "Injest_To_Bronze"
+				},
+				"annotations": [],
+				"lastPublishTime": "2026-03-26T05:53:03Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/ds_employee_timesheet_source')]",
+				"[concat(variables('factoryId'), '/datasets/ds_employee_timesheet_bronze')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/pl_master_injest_to_bronze')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Master Pipeline that executes all of the Pipelines in the Injest_To_Bronze Folder",
+				"activities": [
+					{
+						"name": "Employee Survey Injest To Bronze",
+						"type": "ExecutePipeline",
+						"dependsOn": [],
+						"policy": {
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "pl_employee_engagement_survey_injest_to_Bronze",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
+					},
+					{
+						"name": "Training and Development Injest To Bronze",
+						"type": "ExecutePipeline",
+						"dependsOn": [],
+						"policy": {
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "pl_training_and_development_injest_to_bronze",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
+					},
+					{
+						"name": "Employee Timesheet Injest To Bronze",
+						"type": "ExecutePipeline",
+						"dependsOn": [],
+						"policy": {
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "pl_employee_timesheet_injest_to_bronze",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
+					},
+					{
+						"name": "Recruitment Data Injest To Bronze",
+						"type": "ExecutePipeline",
+						"dependsOn": [],
+						"policy": {
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "pl_recruitment_data_injest_to_bronze",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
+					},
+					{
+						"name": "Employee Payroll Injest To Bronze",
+						"type": "ExecutePipeline",
+						"dependsOn": [],
+						"policy": {
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "pl_employee_payroll_injest_to_bronze",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"folder": {
+					"name": "Injest_To_Bronze"
+				},
+				"annotations": [],
+				"lastPublishTime": "2026-03-30T05:49:56Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/pl_employee_engagement_survey_injest_to_Bronze')]",
+				"[concat(variables('factoryId'), '/pipelines/pl_training_and_development_injest_to_bronze')]",
+				"[concat(variables('factoryId'), '/pipelines/pl_employee_timesheet_injest_to_bronze')]",
+				"[concat(variables('factoryId'), '/pipelines/pl_recruitment_data_injest_to_bronze')]",
+				"[concat(variables('factoryId'), '/pipelines/pl_employee_payroll_injest_to_bronze')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/pl_middle')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Get_Source_Folder",
+						"type": "GetMetadata",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "ds_landing_file",
+								"type": "DatasetReference",
+								"parameters": {
+									"ds_source_dir": {
+										"value": "@pipeline().parameters.p_root_folder",
+										"type": "Expression"
+									},
+									"ds_source_file": {
+										"value": "@string('')",
+										"type": "Expression"
+									}
+								}
+							},
+							"fieldList": [
+								"childItems"
+							],
+							"storeSettings": {
+								"type": "AzureBlobFSReadSettings",
+								"recursive": true,
+								"enablePartitionDiscovery": false
+							},
+							"formatSettings": {
+								"type": "DelimitedTextReadSettings"
+							}
+						}
+					},
+					{
+						"name": "For Each File in Source Folder",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Get_Source_Folder",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Get_Source_Folder').output.childItems",
+								"type": "Expression"
+							},
+							"isSequential": true,
+							"activities": [
+								{
+									"name": "Check If File CSV",
+									"type": "IfCondition",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"expression": {
+											"value": "@and(\n  equals(item().type, 'File'),\n  endsWith(item().name, '.csv')\n)",
+											"type": "Expression"
+										},
+										"ifFalseActivities": [
+											{
+												"name": "Execute Middle Inner Folder",
+												"type": "ExecutePipeline",
+												"dependsOn": [],
+												"policy": {
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"pipeline": {
+														"referenceName": "pl_middle_inner_folder",
+														"type": "PipelineReference"
+													},
+													"waitOnCompletion": true,
+													"parameters": {
+														"p_inner_folder": {
+															"value": "@item().name",
+															"type": "Expression"
+														},
+														"p_year": {
+															"value": "@pipeline().parameters.p_year",
+															"type": "Expression"
+														},
+														"p_month": {
+															"value": "@pipeline().parameters.p_month",
+															"type": "Expression"
+														},
+														"p_date": {
+															"value": "@pipeline().parameters.p_date",
+															"type": "Expression"
+														},
+														"p_item": {
+															"value": "@item()",
+															"type": "Expression"
+														}
+													}
+												}
+											}
+										],
+										"ifTrueActivities": [
+											{
+												"name": "Execute Middle Files",
+												"type": "ExecutePipeline",
+												"dependsOn": [],
+												"policy": {
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"pipeline": {
+														"referenceName": "pl_middle_files",
+														"type": "PipelineReference"
+													},
+													"waitOnCompletion": true,
+													"parameters": {
+														"p_item": {
+															"value": "@item()",
+															"type": "Expression"
+														},
+														"p_year": {
+															"value": "@pipeline().parameters.p_year",
+															"type": "Expression"
+														},
+														"p_month": {
+															"value": "@pipeline().parameters.p_month",
+															"type": "Expression"
+														},
+														"p_date": {
+															"value": "@pipeline().parameters.p_date",
+															"type": "Expression"
+														},
+														"p_root_folder": {
+															"value": "@pipeline().parameters.p_root_folder",
+															"type": "Expression"
+														}
+													}
+												}
+											}
+										]
+									}
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"p_root_folder": {
+						"type": "string"
+					},
+					"p_year": {
+						"type": "string"
+					},
+					"p_month": {
+						"type": "string"
+					},
+					"p_date": {
+						"type": "string"
+					}
+				},
+				"variables": {
+					"v_source_file_path": {
+						"type": "String"
+					},
+					"v_target_file_path": {
+						"type": "String"
+					}
+				},
+				"annotations": [],
+				"lastPublishTime": "2026-04-13T02:19:28Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/ds_landing_file')]",
+				"[concat(variables('factoryId'), '/pipelines/pl_middle_inner_folder')]",
+				"[concat(variables('factoryId'), '/pipelines/pl_middle_files')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/pl_middle_files')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Execute Bottom Pipeline",
+						"type": "ExecutePipeline",
+						"dependsOn": [],
+						"policy": {
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "pl_bottom",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"p_source_file": {
+									"value": "@pipeline().parameters.p_item.name",
+									"type": "Expression"
+								},
+								"p_year": {
+									"value": "@pipeline().parameters.p_year",
+									"type": "Expression"
+								},
+								"p_month": {
+									"value": "@pipeline().parameters.p_month",
+									"type": "Expression"
+								},
+								"p_date": {
+									"value": "@pipeline().parameters.p_date",
+									"type": "Expression"
+								},
+								"p_root_folder": {
+									"value": "@pipeline().parameters.p_root_folder",
+									"type": "Expression"
+								}
+							}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"p_item": {
+						"type": "object"
+					},
+					"p_year": {
+						"type": "string"
+					},
+					"p_month": {
+						"type": "string"
+					},
+					"p_date": {
+						"type": "string"
+					},
+					"p_root_folder": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"lastPublishTime": "2026-04-10T01:48:11Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/pl_bottom')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/pl_middle_inner_folder')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Folder Type Check",
+						"type": "IfCondition",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@equals(pipeline().parameters.p_item.type, 'Folder')",
+								"type": "Expression"
+							},
+							"ifTrueActivities": [
+								{
+									"name": "Execute Middle Recursive Items",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"policy": {
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "pl_middle_recursive_items",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"p_folder_path": {
+												"value": "@pipeline().parameters.p_inner_folder",
+												"type": "Expression"
+											},
+											"p_year": {
+												"value": "@pipeline().parameters.p_year",
+												"type": "Expression"
+											},
+											"p_month": {
+												"value": "@pipeline().parameters.p_month",
+												"type": "Expression"
+											},
+											"p_date": {
+												"value": "@pipeline().parameters.p_date",
+												"type": "Expression"
+											}
+										}
+									}
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"p_inner_folder": {
+						"type": "string"
+					},
+					"p_year": {
+						"type": "string"
+					},
+					"p_month": {
+						"type": "string"
+					},
+					"p_date": {
+						"type": "string"
+					},
+					"p_item": {
+						"type": "object"
+					}
+				},
+				"annotations": [],
+				"lastPublishTime": "2026-04-13T00:40:00Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/pl_middle_recursive_items')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/pl_middle_recursive_items')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "For Each CSV File",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Filter For CSV Files",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Filter For CSV Files').output.value",
+								"type": "Expression"
+							},
+							"isSequential": true,
+							"activities": [
+								{
+									"name": "Execute Middle FIles",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"policy": {
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "pl_middle_files",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"p_item": {
+												"value": "@item()",
+												"type": "Expression"
+											},
+											"p_year": {
+												"value": "@pipeline().parameters.p_year",
+												"type": "Expression"
+											},
+											"p_month": {
+												"value": "@pipeline().parameters.p_month",
+												"type": "Expression"
+											},
+											"p_date": {
+												"value": "@pipeline().parameters.p_date",
+												"type": "Expression"
+											},
+											"p_root_folder": {
+												"value": "@pipeline().parameters.p_folder_path",
+												"type": "Expression"
+											}
+										}
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "Get Recursive Items",
+						"type": "GetMetadata",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "ds_landing_folder",
+								"type": "DatasetReference",
+								"parameters": {
+									"folderPath": {
+										"value": "@pipeline().parameters.p_folder_path",
+										"type": "Expression"
+									}
+								}
+							},
+							"fieldList": [
+								"childItems"
+							],
+							"storeSettings": {
+								"type": "AzureBlobFSReadSettings",
+								"recursive": true,
+								"enablePartitionDiscovery": false
+							},
+							"formatSettings": {
+								"type": "DelimitedTextReadSettings"
+							}
+						}
+					},
+					{
+						"name": "Filter For CSV Files",
+						"type": "Filter",
+						"dependsOn": [
+							{
+								"activity": "Get Recursive Items",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Get Recursive Items').output.childItems",
+								"type": "Expression"
+							},
+							"condition": {
+								"value": "@and(   equals(item().type, 'File'),   endsWith(item().name, '.csv') )",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"p_folder_path": {
+						"type": "string"
+					},
+					"p_year": {
+						"type": "string"
+					},
+					"p_month": {
+						"type": "string"
+					},
+					"p_date": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"lastPublishTime": "2026-04-13T02:19:28Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/ds_landing_folder')]",
+				"[concat(variables('factoryId'), '/pipelines/pl_middle_files')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/pl_recruitment_data_bronze_to_silver')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Recruitment Data Bronze to Silver Notebook",
+						"type": "DatabricksNotebook",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.00:10:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Users/matthew.kristanto@exposedata.com.au/superhero_enterprise_hr/bronze/bronze_injest",
+							"baseParameters": {
+								"process_date": {
+									"value": "@formatDateTime(pipeline().TriggerTime, 'yyyy-MM-dd')",
+									"type": "Expression"
+								},
+								"csv_file": "recruitment_data"
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "LS_DB_RawEnterpriseHRFiles",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Recruitment Data Silver Cleaned Notebook",
+						"type": "DatabricksNotebook",
+						"dependsOn": [
+							{
+								"activity": "Recruitment Data Bronze to Silver Notebook",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.00:10:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Users/matthew.kristanto@exposedata.com.au/superhero_enterprise_hr/silver/HR/silver_recruitment_data_cleaned",
+							"baseParameters": {
+								"process_date": {
+									"value": "@formatDateTime(pipeline().TriggerTime, 'yyyy-MM-dd')",
+									"type": "Expression"
+								},
+								"csv_file": "recruitment_data"
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "LS_DB_RawEnterpriseHRFiles",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Recruitment Data Silver Transformed Notebook",
+						"type": "DatabricksNotebook",
+						"dependsOn": [
+							{
+								"activity": "Recruitment Data Silver Cleaned Notebook",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.00:10:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Users/matthew.kristanto@exposedata.com.au/superhero_enterprise_hr/silver/HR/silver_recruitment_data_transformed",
+							"baseParameters": {
+								"process_date": {
+									"value": "@formatDateTime(pipeline().TriggerTime, 'yyyy-MM-dd')",
+									"type": "Expression"
+								},
+								"csv_file": "recruitment_data"
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "LS_DB_RawEnterpriseHRFiles",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Capitalize Names",
+						"type": "DatabricksNotebook",
+						"dependsOn": [
+							{
+								"activity": "Data Cleaned Checker",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Users/matthew.kristanto@exposedata.com.au/superhero_enterprise_hr/helpers/helper_capital_word_convertor",
+							"baseParameters": {
+								"invalid_records": {
+									"value": "@string(json(activity('Recruitment Data Silver Cleaned Notebook').error.message).invalid_first_name_records)",
+									"type": "Expression"
+								}
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "LS_DB_RawEnterpriseHRFiles",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Data Cleaned Checker",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "Recruitment Data Silver Cleaned Notebook",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@equals(\n    json(activity('Recruitment Data Silver Cleaned Notebook').error.message).error_type,\n    'FIRST_NAME_VALIDATION_FAILED'\n)\n",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"folder": {
+					"name": "Bronze_To_Silver"
+				},
+				"annotations": [],
+				"lastPublishTime": "2026-03-30T05:49:55Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_DB_RawEnterpriseHRFiles')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/pl_recruitment_data_injest_to_bronze')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Copy Recruitment Data",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.00:10:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "DelimitedTextSource",
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSettings"
+								}
+							},
+							"sink": {
+								"type": "DelimitedTextSink",
+								"storeSettings": {
+									"type": "AzureBlobFSWriteSettings",
+									"copyBehavior": {
+										"value": "@{formatDateTime(utcNow(), 'yyyy-MM-dd')}",
+										"type": "Expression"
+									}
+								},
+								"formatSettings": {
+									"type": "DelimitedTextWriteSettings",
+									"quoteAllText": true,
+									"fileExtension": ".txt"
+								}
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "Applicant ID",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "Applicant ID",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "Application Date",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "Application Date",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "First Name",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "First Name",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "Last Name",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "Last Name",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "Gender",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "Gender",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "Date of Birth",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "Date of Birth",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "Phone Number",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "Phone Number",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "Email",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "Email",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "Address",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "Address",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "City",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "City",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "State",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "State",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "Zip Code",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "Zip Code",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "Country",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "Country",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "Education Level",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "Education Level",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "Years of Experience",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "Years of Experience",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "Desired Salary",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "Desired Salary",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "Job Title",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "Job Title",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "Status",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "Status",
+											"type": "String",
+											"physicalType": "String"
+										}
+									}
+								],
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "ds_recruitment_data_source",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "ds_recruitment_data_bronze",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"folder": {
+					"name": "Injest_To_Bronze"
+				},
+				"annotations": [],
+				"lastPublishTime": "2026-03-31T05:18:40Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/ds_recruitment_data_source')]",
+				"[concat(variables('factoryId'), '/datasets/ds_recruitment_data_bronze')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/pl_top')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Middle Pipeline_copy1",
+						"type": "ExecutePipeline",
+						"dependsOn": [],
+						"policy": {
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "pl_middle",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"p_year": {
+									"value": "@pipeline().parameters.p_year",
+									"type": "Expression"
+								},
+								"p_month": {
+									"value": "@pipeline().parameters.p_month",
+									"type": "Expression"
+								},
+								"p_date": {
+									"value": "@pipeline().parameters.p_date",
+									"type": "Expression"
+								}
+							}
+						}
+					},
+					{
+						"name": "Set Ingestion Complete",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Middle Pipeline_copy1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "v_ingestion_complete",
+							"value": true
+						}
+					},
+					{
+						"name": "Employee Survey Fact Databricks Pipeline",
+						"type": "DatabricksJob",
+						"dependsOn": [
+							{
+								"activity": "Set Ingestion Complete",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"jobId": "1026104986079593",
+							"jobParameters": {
+								"process_date_year": {
+									"value": "@pipeline().parameters.p_year",
+									"type": "Expression"
+								},
+								"process_date_month": {
+									"value": "@pipeline().parameters.p_month",
+									"type": "Expression"
+								},
+								"process_date_date": {
+									"value": "@pipeline().parameters.p_date",
+									"type": "Expression"
+								}
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "LS_DB_RawEnterpriseHRFiles",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Job Application Fact Pipeline",
+						"type": "DatabricksJob",
+						"dependsOn": [
+							{
+								"activity": "Set Ingestion Complete",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"jobId": "503606042801551",
+							"jobParameters": {
+								"process_date_year": {
+									"value": "@pipeline().parameters.p_year",
+									"type": "Expression"
+								},
+								"process_date_month": {
+									"value": "@pipeline().parameters.p_month",
+									"type": "Expression"
+								},
+								"process_date_date": {
+									"value": "@pipeline().parameters.p_date",
+									"type": "Expression"
+								}
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "LS_DB_RawEnterpriseHRFiles",
+							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"p_year": {
+						"type": "string"
+					},
+					"p_month": {
+						"type": "string"
+					},
+					"p_date": {
+						"type": "string"
+					},
+					"p_root_folder": {
+						"type": "string"
+					}
+				},
+				"variables": {
+					"v_ingestion_complete": {
+						"type": "Boolean",
+						"defaultValue": false
+					}
+				},
+				"annotations": [],
+				"lastPublishTime": "2026-04-13T02:19:28Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/pl_middle')]",
+				"[concat(variables('factoryId'), '/linkedServices/LS_DB_RawEnterpriseHRFiles')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/pl_training_and_development_bronze_to_silver')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Training and Development Bronze Notebook",
+						"type": "DatabricksNotebook",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.00:10:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Users/matthew.kristanto@exposedata.com.au/superhero_enterprise_hr/bronze/bronze_injest",
+							"baseParameters": {
+								"process_date": {
+									"value": "@formatDateTime(pipeline().TriggerTime, 'yyyy-MM-dd')",
+									"type": "Expression"
+								},
+								"csv_file": "training_and_development"
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "LS_DB_RawEnterpriseHRFiles",
+							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"folder": {
+					"name": "Bronze_To_Silver"
+				},
+				"annotations": [],
+				"lastPublishTime": "2026-03-31T05:18:40Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_DB_RawEnterpriseHRFiles')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/pl_training_and_development_injest_to_bronze')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Copy Training and Development",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.00:10:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "DelimitedTextSource",
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSettings"
+								}
+							},
+							"sink": {
+								"type": "DelimitedTextSink",
+								"storeSettings": {
+									"type": "AzureBlobFSWriteSettings",
+									"copyBehavior": {
+										"value": "@{formatDateTime(utcNow(), 'yyyy')}/\n@{formatDateTime(utcNow(), 'MM')}/\n@{formatDateTime(utcNow(), 'dd')}\n",
+										"type": "Expression"
+									}
+								},
+								"formatSettings": {
+									"type": "DelimitedTextWriteSettings",
+									"quoteAllText": true,
+									"fileExtension": ".txt"
+								}
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "Employee ID",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "Employee ID",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "Training Date",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "Training Date",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "Training Program Name",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "Training Program Name",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "Training Type",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "Training Type",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "Training Outcome",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "Training Outcome",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "Location",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "Location",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "Trainer",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "Trainer",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "Training Duration(Days)",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "Training Duration(Days)",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "Training Cost",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "Training Cost",
+											"type": "String",
+											"physicalType": "String"
+										}
+									}
+								],
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "ds_training_and_development_source",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "ds_training_and_development_bronze",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"folder": {
+					"name": "Injest_To_Bronze"
+				},
+				"annotations": [],
+				"lastPublishTime": "2026-03-31T05:18:40Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/ds_training_and_development_source')]",
+				"[concat(variables('factoryId'), '/datasets/ds_training_and_development_bronze')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_employee_engagement_survey_bronze')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LS_ADLS_RawEnterpriseHRFiles",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Bronze"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": "employee_engagement_survey.csv",
+						"folderPath": {
+							"value": "@concat('employee_engagement/', formatDateTime(utcnow(), 'yyyy-MM-dd'))",
+							"type": "Expression"
+						},
+						"fileSystem": "bronze"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_ADLS_RawEnterpriseHRFiles')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_employee_engagement_survey_source')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LS_ADLS_RawEnterpriseHRFiles",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Source"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": "employee_engagement_survey_data.csv",
+						"folderPath": "EmployeeMaster",
+						"fileSystem": "source"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_ADLS_RawEnterpriseHRFiles')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_employee_payroll_bronze')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LS_ADLS_RawEnterpriseHRFiles",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Bronze"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": "employee_payroll.csv",
+						"folderPath": {
+							"value": "@concat('employee_payroll/', formatDateTime(utcnow(), 'yyyy-MM-dd'))",
+							"type": "Expression"
+						},
+						"fileSystem": "bronze"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_ADLS_RawEnterpriseHRFiles')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_employee_payroll_source')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LS_ADLS_RawEnterpriseHRFiles",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Source"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": "employeePayrollDataset.csv",
+						"fileSystem": "source"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_ADLS_RawEnterpriseHRFiles')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_employee_timesheet_bronze')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LS_ADLS_RawEnterpriseHRFiles",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Bronze"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": "employee_timesheet.csv",
+						"folderPath": {
+							"value": "@concat('employee_timesheet/', formatDateTime(utcnow(), 'yyyy-MM-dd'))",
+							"type": "Expression"
+						},
+						"fileSystem": "bronze"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_ADLS_RawEnterpriseHRFiles')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_employee_timesheet_source')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LS_ADLS_RawEnterpriseHRFiles",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Source"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": "employeeTimesheetDataset.csv",
+						"fileSystem": "source"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_ADLS_RawEnterpriseHRFiles')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_landing_file')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LS_ADLS_RawEnterpriseHRFiles",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"ds_source_dir": {
+						"type": "string"
+					},
+					"ds_source_file": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@dataset().ds_source_file",
+							"type": "Expression"
+						},
+						"folderPath": {
+							"value": "@dataset().ds_source_dir",
+							"type": "Expression"
+						},
+						"fileSystem": "source"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_ADLS_RawEnterpriseHRFiles')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_landing_folder')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LS_ADLS_RawEnterpriseHRFiles",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"folderPath": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"folderPath": {
+							"value": "@dataset().folderPath",
+							"type": "Expression"
+						},
+						"fileSystem": "source"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_ADLS_RawEnterpriseHRFiles')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_recruitment_data_bronze')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LS_ADLS_RawEnterpriseHRFiles",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Bronze"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": "recruitment_data.csv",
+						"folderPath": {
+							"value": "@concat('recruitment_data/', formatDateTime(utcnow(), 'yyyy-MM-dd'))",
+							"type": "Expression"
+						},
+						"fileSystem": "bronze"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_ADLS_RawEnterpriseHRFiles')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_recruitment_data_source')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LS_ADLS_RawEnterpriseHRFiles",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Source"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": "recruitment_data.csv",
+						"folderPath": "EmployeeMaster",
+						"fileSystem": "source"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_ADLS_RawEnterpriseHRFiles')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_target')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LS_ADLS_RawEnterpriseHRFiles",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"ds_sink_dir": {
+						"type": "string"
+					},
+					"ds_sink_file": {
+						"type": "string"
+					},
+					"ds_year": {
+						"type": "string"
+					},
+					"ds_month": {
+						"type": "string"
+					},
+					"ds_date": {
+						"type": "string"
+					},
+					"ds_folder_name": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@dataset().ds_sink_file",
+							"type": "Expression"
+						},
+						"folderPath": {
+							"value": "@concat(dataset().ds_year, '/',  dataset().ds_month, '/',  dataset().ds_date, '/', replace(dataset().ds_folder_name, '.csv', ''))",
+							"type": "Expression"
+						},
+						"fileSystem": "bronze"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_ADLS_RawEnterpriseHRFiles')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_training_and_development_bronze')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LS_ADLS_RawEnterpriseHRFiles",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Bronze"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": "training_and_development.csv",
+						"folderPath": {
+							"value": "@concat('training_and_development/', formatDateTime(utcnow(), 'yyyy-MM-dd'))",
+							"type": "Expression"
+						},
+						"fileSystem": "bronze"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_ADLS_RawEnterpriseHRFiles')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_training_and_development_source')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LS_ADLS_RawEnterpriseHRFiles",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Source"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": "training_and_development_data.csv",
+						"folderPath": "EmployeeMaster",
+						"fileSystem": "source"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_ADLS_RawEnterpriseHRFiles')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/LS_ADLS_RawEnterpriseHRFiles')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobFS",
+				"typeProperties": {
+					"url": "[parameters('LS_ADLS_RawEnterpriseHRFiles_properties_typeProperties_url')]",
+					"accountKey": {
+						"type": "SecureString",
+						"value": "[parameters('LS_ADLS_RawEnterpriseHRFiles_accountKey')]"
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/LS_DB_RawEnterpriseHRFiles')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureDatabricks",
+				"typeProperties": {
+					"domain": "https://adb-7405605014654402.2.azuredatabricks.net",
+					"accessToken": {
+						"type": "SecureString",
+						"value": "[parameters('LS_DB_RawEnterpriseHRFiles_accessToken')]"
+					},
+					"existingClusterId": "[parameters('LS_DB_RawEnterpriseHRFiles_properties_typeProperties_existingClusterId')]"
+				}
+			},
+			"dependsOn": []
+		}
+	]
+}
