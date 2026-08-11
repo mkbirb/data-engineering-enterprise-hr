@@ -1,0 +1,15 @@
+{
+	"name": "adf-mkcustomersorders-dev-auseast",
+	"properties": {
+		"trustModeClaimForMi": {
+			"value": "Disabled",
+			"editable": true
+		}
+	},
+	"location": "australiaeast",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "a92b415e-84a9-42f2-9278-ac16ed7a9963",
+		"tenantId": "828ac48e-05ab-4d94-abaf-3ccae6f84aac"
+	}
+}

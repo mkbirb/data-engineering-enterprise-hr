@@ -1,0 +1,17 @@
+{
+	"name": "sql_source",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ls_sql_orders",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "tw_source"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

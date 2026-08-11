@@ -1,0 +1,36 @@
+{
+	"name": "df_test",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "ds_landing_order_items",
+						"type": "DatasetReference"
+					},
+					"name": "OrderItemsRaw"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "ds_landing_order_items",
+						"type": "DatasetReference"
+					},
+					"name": "OrderItemsTestSink"
+				}
+			],
+			"transformations": [],
+			"scriptLines": [
+				"source(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> OrderItemsRaw",
+				"OrderItemsRaw sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> OrderItemsTestSink"
+			]
+		}
+	}
+}

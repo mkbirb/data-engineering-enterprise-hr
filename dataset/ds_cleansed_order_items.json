@@ -1,0 +1,48 @@
+{
+	"name": "ds_cleansed_order_items",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ls_dl_orders",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "03 Cleansed"
+		},
+		"annotations": [],
+		"type": "Parquet",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"folderPath": {
+					"value": "@concat('order_items/', formatDateTime(utcnow(), 'yyyy-MM-dd'))",
+					"type": "Expression"
+				},
+				"fileSystem": "cleansed"
+			},
+			"compressionCodec": "snappy"
+		},
+		"schema": [
+			{
+				"name": "ORDER_ID",
+				"type": "INT32"
+			},
+			{
+				"name": "PRODUCT_ID",
+				"type": "INT32"
+			},
+			{
+				"name": "UNIT_PRICE",
+				"type": "DOUBLE"
+			},
+			{
+				"name": "QUANTITY",
+				"type": "INT32"
+			},
+			{
+				"name": "UPDATED_TIMESTAMP",
+				"type": "INT96"
+			}
+		]
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

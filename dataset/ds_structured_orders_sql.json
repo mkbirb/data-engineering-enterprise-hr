@@ -1,0 +1,76 @@
+{
+	"name": "ds_structured_orders_sql",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ls_sql_orders",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "04 Structured"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "ORDER_ITEM_ID",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "ORDER_ID",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "ORDER_DATE",
+				"type": "date"
+			},
+			{
+				"name": "CUSTOMER_ID",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "ORDER_STATUS",
+				"type": "varchar"
+			},
+			{
+				"name": "STORE_ID",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "PRODUCT_ID",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "UNIT_PRICE",
+				"type": "decimal",
+				"precision": 18,
+				"scale": 0
+			},
+			{
+				"name": "QUANTITY",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "SUBTOTAL",
+				"type": "decimal",
+				"precision": 18,
+				"scale": 0
+			},
+			{
+				"name": "UPDATED_TIMESTAMP",
+				"type": "datetime2",
+				"scale": 7
+			}
+		],
+		"typeProperties": {
+			"schema": "ORDERS",
+			"table": "ORDERS"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}
